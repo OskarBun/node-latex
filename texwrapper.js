@@ -54,6 +54,7 @@ function handleErrors(dirpath, result) {
   var log_file = path.join(dirpath, "texput.log");
   fs.exists(log_file, function(exists) {
     if(!exists) {
+        console.log(result);
       fse.remove(dirpath);
       result.emit("error", new Error("Error running LaTeX"));
       return;
@@ -86,12 +87,12 @@ module.exports = function(doc, options) {
   if(!options) {
     options = {};
   }
-  
+
   var format = options.format || "pdf";
-  
+
   //LaTeX command
-  var tex_command = options.command || (format === "pdf" ? "pdflatex" : "latex");
-  
+  var tex_command = options.command || (format === "pdf" ? "latexmk" : "latex");
+
   //Create result
   var result = through();
   awaitDir(function(err, dirpath) {
@@ -106,11 +107,11 @@ module.exports = function(doc, options) {
     //Write data to tex file
     var input_path = path.join(dirpath, "texput.tex");
     var tex_file = fs.createWriteStream(input_path);
-    
+
     tex_file.on("close", function() {
       //Invoke LaTeX
       var tex = spawn(tex_command, [
-        "-interaction=nonstopmode",
+        "-pdf",
         "texput.tex"
       ], {
         cwd: dirpath,
@@ -120,7 +121,7 @@ module.exports = function(doc, options) {
 
       // Let the user know if LaTeX couldn't be found
       tex.on('error', function(err) {
-        if (err.code === 'ENOENT') { 
+        if (err.code === 'ENOENT') {
           console.error("\nThere was an error spawning " + tex_command + ". \n"
                         + "Please make sure your LaTeX distribution is"
                         + "properly installed.\n");
@@ -143,7 +144,7 @@ module.exports = function(doc, options) {
         });
       });
     });
-    
+
     if(typeof doc === "string" || doc instanceof Buffer) {
       tex_file.end(doc);
     } else if(doc instanceof Array) {
@@ -158,6 +159,6 @@ module.exports = function(doc, options) {
       return;
     }
   });
-  
+
   return result;
 }
